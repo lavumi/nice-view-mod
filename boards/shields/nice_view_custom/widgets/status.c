@@ -20,11 +20,24 @@ LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
 #include <zmk/events/endpoint_changed.h>
 #include <zmk/events/wpm_state_changed.h>
 #include <zmk/events/layer_state_changed.h>
+#include <zmk/events/keycode_state_changed.h>
 #include <zmk/usb.h>
 #include <zmk/ble.h>
 #include <zmk/endpoints.h>
 #include <zmk/keymap.h>
 #include <zmk/wpm.h>
+
+
+LV_IMG_DECLARE(bongo0);
+LV_IMG_DECLARE(bongo1);
+LV_IMG_DECLARE(bongo2);
+
+
+const lv_img_dsc_t *bongo[] = {
+    &bongo0,
+    &bongo1,
+    &bongo2
+};
 
 static sys_slist_t widgets = SYS_SLIST_STATIC_INIT(&widgets);
 
@@ -42,6 +55,10 @@ struct layer_status_state {
 
 struct wpm_status_state {
     uint8_t wpm;
+};
+
+struct keycode_status_state {
+    bool state;
 };
 
 static void draw_top(lv_obj_t *widget, lv_color_t cbuf[], const struct status_state *state) {
@@ -87,85 +104,144 @@ static void draw_top(lv_obj_t *widget, lv_color_t cbuf[], const struct status_st
     lv_canvas_draw_text(canvas, 0, 0, CANVAS_SIZE, &label_dsc, output_text);
 
     // Draw WPM
-    lv_canvas_draw_rect(canvas, 0, 21, 68, 42, &rect_white_dsc);
-    lv_canvas_draw_rect(canvas, 1, 22, 66, 40, &rect_black_dsc);
+    // lv_canvas_draw_rect(canvas, 0, 21, 68, 42, &rect_white_dsc);
+    // lv_canvas_draw_rect(canvas, 1, 22, 66, 40, &rect_black_dsc);
 
-    char wpm_text[6] = {};
-    snprintf(wpm_text, sizeof(wpm_text), "%d", state->wpm[9]);
-    lv_canvas_draw_text(canvas, 42, 52, 24, &label_dsc_wpm, wpm_text);
+    // char wpm_text[6] = {};
+    // snprintf(wpm_text, sizeof(wpm_text), "%d", state->wpm[9]);
+    // lv_canvas_draw_text(canvas, 42, 52, 24, &label_dsc_wpm, wpm_text);
 
-    int max = 0;
-    int min = 256;
+    // int max = 0;
+    // int min = 256;
 
-    for (int i = 0; i < 10; i++) {
-        if (state->wpm[i] > max) {
-            max = state->wpm[i];
-        }
-        if (state->wpm[i] < min) {
-            min = state->wpm[i];
-        }
-    }
+    // for (int i = 0; i < 10; i++) {
+    //     if (state->wpm[i] > max) {
+    //         max = state->wpm[i];
+    //     }
+    //     if (state->wpm[i] < min) {
+    //         min = state->wpm[i];
+    //     }
+    // }
 
-    int range = max - min;
-    if (range == 0) {
-        range = 1;
-    }
+    // int range = max - min;
+    // if (range == 0) {
+    //     range = 1;
+    // }
 
-    lv_point_t points[10];
-    for (int i = 0; i < 10; i++) {
-        points[i].x = 2 + i * 7;
-        points[i].y = 60 - (state->wpm[i] - min) * 36 / range;
-    }
-    lv_canvas_draw_line(canvas, points, 10, &line_dsc);
+    // lv_point_t points[10];
+    // for (int i = 0; i < 10; i++) {
+    //     points[i].x = 2 + i * 7;
+    //     points[i].y = 60 - (state->wpm[i] - min) * 36 / range;
+    // }
+    // lv_canvas_draw_line(canvas, points, 10, &line_dsc);
 
     // Rotate canvas
     rotate_canvas(canvas, cbuf);
 }
 
-static void draw_middle(lv_obj_t *widget, lv_color_t cbuf[], const struct status_state *state) {
-    lv_obj_t *canvas = lv_obj_get_child(widget, 1);
+static void set_bongo_cat(struct zmk_widget_status *widget, struct keycode_status_state state) {
+    // pressed
+    if (state.state) {
+        lv_img_set_src(widget->art, bongo[widget->state.bongo+1]);
+        widget->state.bongo = !widget->state.bongo;
+    }
+    // released
+    else lv_img_set_src(widget->art, bongo[0]);
+}
 
-    lv_draw_rect_dsc_t rect_black_dsc;
-    init_rect_dsc(&rect_black_dsc, LVGL_BACKGROUND);
-    lv_draw_rect_dsc_t rect_white_dsc;
-    init_rect_dsc(&rect_white_dsc, LVGL_FOREGROUND);
-    lv_draw_arc_dsc_t arc_dsc;
-    init_arc_dsc(&arc_dsc, LVGL_FOREGROUND, 2);
-    lv_draw_arc_dsc_t arc_dsc_filled;
-    init_arc_dsc(&arc_dsc_filled, LVGL_FOREGROUND, 9);
-    lv_draw_label_dsc_t label_dsc;
-    init_label_dsc(&label_dsc, LVGL_FOREGROUND, &lv_font_montserrat_18, LV_TEXT_ALIGN_CENTER);
-    lv_draw_label_dsc_t label_dsc_black;
-    init_label_dsc(&label_dsc_black, LVGL_BACKGROUND, &lv_font_montserrat_18, LV_TEXT_ALIGN_CENTER);
+static void keycode_status_update_cb(struct keycode_status_state state) {
+    struct zmk_widget_status *widget;
+    SYS_SLIST_FOR_EACH_CONTAINER(&widgets, widget, node) { set_bongo_cat(widget, state); }
+}
 
-    // Fill background
-    lv_canvas_draw_rect(canvas, 0, 0, CANVAS_SIZE, CANVAS_SIZE, &rect_black_dsc);
+static struct keycode_status_state keycode_status_get_state(const zmk_event_t *eh) {
+    const struct zmk_keycode_state_changed *ev = as_zmk_keycode_state_changed(eh);
 
-    // Draw circles
-    int circle_offsets[5][2] = {
-        {13, 13}, {55, 13}, {34, 34}, {13, 55}, {55, 55},
+    return (struct keycode_status_state) {
+        .state = (ev != NULL) ? ev->state : false,
     };
-
-    for (int i = 0; i < 5; i++) {
-        bool selected = i == state->active_profile_index;
-
-        lv_canvas_draw_arc(canvas, circle_offsets[i][0], circle_offsets[i][1], 13, 0, 360,
-                           &arc_dsc);
-
-        if (selected) {
-            lv_canvas_draw_arc(canvas, circle_offsets[i][0], circle_offsets[i][1], 9, 0, 359,
-                               &arc_dsc_filled);
-        }
-
-        char label[2];
-        snprintf(label, sizeof(label), "%d", i + 1);
-        lv_canvas_draw_text(canvas, circle_offsets[i][0] - 8, circle_offsets[i][1] - 10, 16,
-                            (selected ? &label_dsc_black : &label_dsc), label);
-    }
-
-    // Rotate canvas
-    rotate_canvas(canvas, cbuf);
 }
+
+ZMK_DISPLAY_WIDGET_LISTENER(widget_bongo_cat, struct keycode_status_state, keycode_status_update_cb,
+                            keycode_status_get_state)
+ZMK_SUBSCRIPTION(widget_bongo_cat, zmk_keycode_state_changed);
+
+
+// static void draw_middle(lv_obj_t *widget, lv_color_t cbuf[], const struct status_state *state) {
+//     lv_obj_t *canvas = lv_obj_get_child(widget, 1);
+
+    // lv_draw_rect_dsc_t rect_black_dsc;
+    // init_rect_dsc(&rect_black_dsc, LVGL_BACKGROUND);
+    // lv_draw_rect_dsc_t rect_white_dsc;
+    // init_rect_dsc(&rect_white_dsc, LVGL_FOREGROUND);
+    // lv_draw_arc_dsc_t arc_dsc;
+    // init_arc_dsc(&arc_dsc, LVGL_FOREGROUND, 2);
+    // lv_draw_arc_dsc_t arc_dsc_filled;
+    // init_arc_dsc(&arc_dsc_filled, LVGL_FOREGROUND, 9);
+    // lv_draw_label_dsc_t label_dsc;
+    // init_label_dsc(&label_dsc, LVGL_FOREGROUND, &lv_font_montserrat_18, LV_TEXT_ALIGN_CENTER);
+    // lv_draw_label_dsc_t label_dsc_black;
+    // init_label_dsc(&label_dsc_black, LVGL_BACKGROUND, &lv_font_montserrat_18, LV_TEXT_ALIGN_CENTER);
+
+    // // Fill background
+    // lv_canvas_draw_rect(canvas, 0, 0, CANVAS_SIZE, CANVAS_SIZE, &rect_black_dsc);
+
+    // // Draw circles
+    // int circle_offsets[5][2] = {
+    //     {13, 13}, {55, 13}, {34, 34}, {13, 55}, {55, 55},
+    // };
+
+    // for (int i = 0; i < 5; i++) {
+    //     bool selected = i == state->active_profile_index;
+
+    //     lv_canvas_draw_arc(canvas, circle_offsets[i][0], circle_offsets[i][1], 13, 0, 360,
+    //                        &arc_dsc);
+
+    //     if (selected) {
+    //         lv_canvas_draw_arc(canvas, circle_offsets[i][0], circle_offsets[i][1], 9, 0, 359,
+    //                            &arc_dsc_filled);
+    //     }
+
+    //     char label[2];
+    //     snprintf(label, sizeof(label), "%d", i + 1);
+    //     lv_canvas_draw_text(canvas, circle_offsets[i][0] - 8, circle_offsets[i][1] - 10, 16,
+    //                         (selected ? &label_dsc_black : &label_dsc), label);
+    // }
+
+    // lv_obj_t *art = lv_animimg_create(canvas);
+    // lv_obj_align(art, LV_ALIGN_TOP_LEFT, 0, 0);
+    // lv_animimg_set_src(art, (const void **) anim_imgs, 3); // frame count
+    // lv_animimg_set_duration(art, 500 * 3); // 500ms * 16 frames
+    // lv_animimg_set_repeat_count(art, LV_ANIM_REPEAT_INFINITE);
+    // lv_animimg_start(art);
+
+
+
+
+
+
+//     lv_draw_rect_dsc_t rect_black_dsc;
+//     init_rect_dsc(&rect_black_dsc, LVGL_BACKGROUND);
+//     lv_draw_label_dsc_t label_dsc;
+//     init_label_dsc(&label_dsc, LVGL_FOREGROUND, &lv_font_montserrat_14, LV_TEXT_ALIGN_CENTER);
+
+//     // Fill background
+//     lv_canvas_draw_rect(canvas, 0, 0, CANVAS_SIZE, CANVAS_SIZE, &rect_black_dsc);
+
+//     // Draw layer
+//     if (state->layer_label == NULL) {
+//         char text[10] = {};
+
+//         sprintf(text, "ACTIVE: %i", state->active_profile_index);
+
+//         lv_canvas_draw_text(canvas, 0, 5, 68, &label_dsc, text);
+//     } else {
+//         lv_canvas_draw_text(canvas, 0, 5, 68, &label_dsc, state->layer_label);
+//     }
+
+//     // Rotate canvas
+//     rotate_canvas(canvas, cbuf);
+// }
 
 static void draw_bottom(lv_obj_t *widget, lv_color_t cbuf[], const struct status_state *state) {
     lv_obj_t *canvas = lv_obj_get_child(widget, 2);
@@ -179,15 +255,18 @@ static void draw_bottom(lv_obj_t *widget, lv_color_t cbuf[], const struct status
     lv_canvas_draw_rect(canvas, 0, 0, CANVAS_SIZE, CANVAS_SIZE, &rect_black_dsc);
 
     // Draw layer
-    if (state->layer_label == NULL) {
-        char text[10] = {};
+    char text[10] = {};
+    sprintf(text, "ACTIVE %i", state->active_profile_index);
+    lv_canvas_draw_text(canvas, 0, 5, 68, &label_dsc, text);
+    // if (state->layer_label == NULL) {
+    //     char text[10] = {};
 
-        sprintf(text, "LAYER %i", state->layer_index);
+    //     sprintf(text, "LAYER %i", state->layer_index);
 
-        lv_canvas_draw_text(canvas, 0, 5, 68, &label_dsc, text);
-    } else {
-        lv_canvas_draw_text(canvas, 0, 5, 68, &label_dsc, state->layer_label);
-    }
+    //     lv_canvas_draw_text(canvas, 0, 5, 68, &label_dsc, text);
+    // } else {
+    //     lv_canvas_draw_text(canvas, 0, 5, 68, &label_dsc, state->layer_label);
+    // }
 
     // Rotate canvas
     rotate_canvas(canvas, cbuf);
@@ -236,7 +315,7 @@ static void set_output_status(struct zmk_widget_status *widget,
     widget->state.active_profile_bonded = state->active_profile_bonded;
 
     draw_top(widget->obj, widget->cbuf, &widget->state);
-    draw_middle(widget->obj, widget->cbuf2, &widget->state);
+    // draw_middle(widget->obj, widget->cbuf2, &widget->state);
 }
 
 static void output_status_update_cb(struct output_status_state state) {
@@ -314,11 +393,23 @@ int zmk_widget_status_init(struct zmk_widget_status *widget, lv_obj_t *parent) {
     lv_obj_t *top = lv_canvas_create(widget->obj);
     lv_obj_align(top, LV_ALIGN_TOP_RIGHT, 0, 0);
     lv_canvas_set_buffer(top, widget->cbuf, CANVAS_SIZE, CANVAS_SIZE, LV_IMG_CF_TRUE_COLOR);
+
+    // widget->art = lv_img_create(canvas);
+    // lv_img_set_src(widget->art, bongo[0]);
+    // lv_obj_align(widget->art, LV_ALIGN_TOP_LEFT, 0, 0);
+
     lv_obj_t *middle = lv_canvas_create(widget->obj);
-    lv_obj_align(middle, LV_ALIGN_TOP_LEFT, 24, 0);
+    lv_obj_align(middle, LV_ALIGN_TOP_RIGHT, -20, 0);
     lv_canvas_set_buffer(middle, widget->cbuf2, CANVAS_SIZE, CANVAS_SIZE, LV_IMG_CF_TRUE_COLOR);
+
+
+    widget->art = lv_img_create(middle);
+    lv_img_set_src(widget->art, bongo[0]);
+    lv_obj_align(widget->art, LV_ALIGN_TOP_LEFT, 2, 2);
+
+
     lv_obj_t *bottom = lv_canvas_create(widget->obj);
-    lv_obj_align(bottom, LV_ALIGN_TOP_LEFT, -44, 0);
+    lv_obj_align(bottom, LV_ALIGN_TOP_LEFT, 0, 0);
     lv_canvas_set_buffer(bottom, widget->cbuf3, CANVAS_SIZE, CANVAS_SIZE, LV_IMG_CF_TRUE_COLOR);
 
     sys_slist_append(&widgets, &widget->node);

@@ -9,11 +9,12 @@
 
 #include <lvgl.h>
 #include <zephyr/kernel.h>
-#include "util.h"
+#include "util.h" 
 
 struct zmk_widget_status {
     sys_snode_t node;
     lv_obj_t *obj;
+    lv_obj_t *art;
     lv_color_t cbuf[CANVAS_SIZE * CANVAS_SIZE];
     lv_color_t cbuf2[CANVAS_SIZE * CANVAS_SIZE];
     lv_color_t cbuf3[CANVAS_SIZE * CANVAS_SIZE];
