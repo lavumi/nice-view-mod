@@ -141,8 +141,8 @@ int zmk_widget_status_init(struct zmk_widget_status *widget, lv_obj_t *parent) {
 
     lv_obj_t *art = lv_img_create(widget->obj);
     lv_img_set_src(art, &cerberos);
-    lv_obj_align(art, LV_ALIGN_TOP_LEFT, 0, 0);
-
+    lv_obj_align(art, LV_ALIGN_TOP_LEFT, 0, 0); 
+    rotate_canvas(art, widget->cbuf);
 
     // lv_obj_t * art = lv_animimg_create(widget->obj);            
     // lv_obj_center(art);                                         
@@ -150,7 +150,6 @@ int zmk_widget_status_init(struct zmk_widget_status *widget, lv_obj_t *parent) {
     // lv_animimg_set_duration(art, 1100);                         
     // lv_animimg_set_repeat_count(art, LV_ANIM_REPEAT_INFINITE);  
     // lv_animimg_start(art);                                      
-    // lv_obj_align(art, LV_ALIGN_TOP_LEFT, 0, 0);
 
     sys_slist_append(&widgets, &widget->node);
     widget_battery_status_init();
