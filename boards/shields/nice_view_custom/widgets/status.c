@@ -64,6 +64,9 @@ struct keycode_status_state {
 static void draw_top(lv_obj_t *widget, lv_color_t cbuf[], const struct status_state *state) {
     lv_obj_t *canvas = lv_obj_get_child(widget, 0);
 
+    lv_layer_t layer;
+    lv_canvas_init_layer(canvas, &layer);
+
     lv_draw_label_dsc_t label_dsc;
     init_label_dsc(&label_dsc, LVGL_FOREGROUND, &lv_font_montserrat_16, LV_TEXT_ALIGN_RIGHT);
     lv_draw_label_dsc_t label_dsc_wpm;
@@ -76,7 +79,12 @@ static void draw_top(lv_obj_t *widget, lv_color_t cbuf[], const struct status_st
     init_line_dsc(&line_dsc, LVGL_FOREGROUND, 1);
 
     // Fill background
-    lv_canvas_draw_rect(canvas, 0, 0, CANVAS_SIZE, CANVAS_SIZE, &rect_black_dsc);
+    lv_area_t area;
+    area.x1 = 0;
+    area.y1 = 0;
+    area.x2 = CANVAS_SIZE;
+    area.y2 = CANVAS_SIZE;
+    lv_draw_rect(&layer, &rect_black_dsc, &area);
 
     // Draw battery
     draw_battery(canvas, state);
@@ -101,7 +109,12 @@ static void draw_top(lv_obj_t *widget, lv_color_t cbuf[], const struct status_st
         break;
     }
 
-    lv_canvas_draw_text(canvas, 0, 0, CANVAS_SIZE, &label_dsc, output_text);
+    label_dsc.text = output_text;
+    area.x1 = 0;
+    area.y1 = 0;
+    area.x2 = CANVAS_SIZE;
+    area.y2 = CANVAS_SIZE;
+    lv_draw_label(&layer, &label_dsc, &area);
 
     // Draw WPM
     // lv_canvas_draw_rect(canvas, 0, 21, 68, 42, &rect_white_dsc);
@@ -134,6 +147,8 @@ static void draw_top(lv_obj_t *widget, lv_color_t cbuf[], const struct status_st
     //     points[i].y = 60 - (state->wpm[i] - min) * 36 / range;
     // }
     // lv_canvas_draw_line(canvas, points, 10, &line_dsc);
+
+    lv_canvas_finish_layer(canvas, &layer);
 
     // Rotate canvas
     rotate_canvas(canvas, cbuf);
@@ -246,27 +261,42 @@ ZMK_SUBSCRIPTION(widget_bongo_cat, zmk_keycode_state_changed);
 static void draw_bottom(lv_obj_t *widget, lv_color_t cbuf[], const struct status_state *state) {
     lv_obj_t *canvas = lv_obj_get_child(widget, 2);
 
+    lv_layer_t layer;
+    lv_canvas_init_layer(canvas, &layer);
+
     lv_draw_rect_dsc_t rect_black_dsc;
     init_rect_dsc(&rect_black_dsc, LVGL_BACKGROUND);
     lv_draw_label_dsc_t label_dsc;
     init_label_dsc(&label_dsc, LVGL_FOREGROUND, &lv_font_montserrat_14, LV_TEXT_ALIGN_CENTER);
 
     // Fill background
-    lv_canvas_draw_rect(canvas, 0, 0, CANVAS_SIZE, CANVAS_SIZE, &rect_black_dsc);
+    lv_area_t area;
+    area.x1 = 0;
+    area.y1 = 0;
+    area.x2 = CANVAS_SIZE;
+    area.y2 = CANVAS_SIZE;
+    lv_draw_rect(&layer, &rect_black_dsc, &area);
 
     // Draw layer
     char text[10] = {};
     sprintf(text, "ACTIVE %i", state->active_profile_index);
-    lv_canvas_draw_text(canvas, 0, 5, 68, &label_dsc, text);
+    label_dsc.text = text;
+    area.x1 = 0;
+    area.y1 = 5;
+    area.x2 = 68;
+    area.y2 = 68;
+    lv_draw_label(&layer, &label_dsc, &area);
     // if (state->layer_label == NULL) {
     //     char text[10] = {};
 
     //     sprintf(text, "LAYER %i", state->layer_index);
 
-    //     lv_canvas_draw_text(canvas, 0, 5, 68, &label_dsc, text);
+    //     lv_draw_label(&layer, &label_dsc, &area, text, NULL);
     // } else {
-    //     lv_canvas_draw_text(canvas, 0, 5, 68, &label_dsc, state->layer_label);
+    //     lv_draw_label(&layer, &label_dsc, &area, state->layer_label, NULL);
     // }
+
+    lv_canvas_finish_layer(canvas, &layer);
 
     // Rotate canvas
     rotate_canvas(canvas, cbuf);
@@ -392,7 +422,7 @@ int zmk_widget_status_init(struct zmk_widget_status *widget, lv_obj_t *parent) {
     lv_obj_set_size(widget->obj, 160, 68);
     lv_obj_t *top = lv_canvas_create(widget->obj);
     lv_obj_align(top, LV_ALIGN_TOP_RIGHT, 0, 0);
-    lv_canvas_set_buffer(top, widget->cbuf, CANVAS_SIZE, CANVAS_SIZE, LV_IMG_CF_TRUE_COLOR);
+    lv_canvas_set_buffer(top, widget->cbuf, CANVAS_SIZE, CANVAS_SIZE, LV_COLOR_FORMAT_NATIVE);
 
     // widget->art = lv_img_create(canvas);
     // lv_img_set_src(widget->art, bongo[0]);
@@ -400,7 +430,7 @@ int zmk_widget_status_init(struct zmk_widget_status *widget, lv_obj_t *parent) {
 
     lv_obj_t *middle = lv_canvas_create(widget->obj);
     lv_obj_align(middle, LV_ALIGN_TOP_RIGHT, -20, 0);
-    lv_canvas_set_buffer(middle, widget->cbuf2, CANVAS_SIZE, CANVAS_SIZE, LV_IMG_CF_TRUE_COLOR);
+    lv_canvas_set_buffer(middle, widget->cbuf2, CANVAS_SIZE, CANVAS_SIZE, LV_COLOR_FORMAT_NATIVE);
 
 
     widget->art = lv_img_create(middle);
@@ -410,13 +440,14 @@ int zmk_widget_status_init(struct zmk_widget_status *widget, lv_obj_t *parent) {
 
     lv_obj_t *bottom = lv_canvas_create(widget->obj);
     lv_obj_align(bottom, LV_ALIGN_TOP_LEFT, 0, 0);
-    lv_canvas_set_buffer(bottom, widget->cbuf3, CANVAS_SIZE, CANVAS_SIZE, LV_IMG_CF_TRUE_COLOR);
+    lv_canvas_set_buffer(bottom, widget->cbuf3, CANVAS_SIZE, CANVAS_SIZE, LV_COLOR_FORMAT_NATIVE);
 
     sys_slist_append(&widgets, &widget->node);
     widget_battery_status_init();
     widget_output_status_init();
     widget_layer_status_init();
     widget_wpm_status_init();
+    widget_bongo_cat_init();
 
     return 0;
 }

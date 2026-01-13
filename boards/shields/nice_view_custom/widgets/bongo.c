@@ -87,9 +87,7 @@ const LV_ATTRIBUTE_MEM_ALIGN LV_ATTRIBUTE_LARGE_CONST LV_ATTRIBUTE_IMG_BONGO0 ui
 };
 
 const lv_img_dsc_t bongo0 = {
-  .header.cf = LV_IMG_CF_INDEXED_1BIT,
-  .header.always_zero = 0,
-  .header.reserved = 1,
+  .header.cf = LV_COLOR_FORMAT_I1,
   .header.w = 64,
   .header.h = 64,
   .data_size = 520,
@@ -171,9 +169,7 @@ const LV_ATTRIBUTE_MEM_ALIGN LV_ATTRIBUTE_LARGE_CONST LV_ATTRIBUTE_IMG_BONGO1 ui
 };
 
 const lv_img_dsc_t bongo1 = {
-  .header.cf = LV_IMG_CF_INDEXED_1BIT,
-  .header.always_zero = 0,
-  .header.reserved = 1,
+  .header.cf = LV_COLOR_FORMAT_I1,
   .header.w = 64,
   .header.h = 64,
   .data_size = 520,
@@ -256,9 +252,7 @@ const LV_ATTRIBUTE_MEM_ALIGN LV_ATTRIBUTE_LARGE_CONST LV_ATTRIBUTE_IMG_BONGO2 ui
 };
 
 const lv_img_dsc_t bongo2 = {
-  .header.cf = LV_IMG_CF_INDEXED_1BIT,
-  .header.always_zero = 0,
-  .header.reserved = 1,
+  .header.cf = LV_COLOR_FORMAT_I1,
   .header.w = 64,
   .header.h = 64,
   .data_size = 520,
